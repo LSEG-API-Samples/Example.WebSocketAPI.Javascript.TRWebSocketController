@@ -113,7 +113,8 @@ controller.onStatus(function(eventCode, msg) {
     Initiate an asynchronous connection to the specified server endpoint.
     * **server**
         
-        IP/hostname and port of the Elektron Advanced Data Server (ADS) managing all communication.  Required.  Parameter syntax:
+        IP/hostname and port of the Elektron Advanced Data Server (ADS) managing all communication.  
+        Required.  Parameter syntax:
         ``` 
         <IP/hostname>:<port>.  Eg: wsServer:14002
         ```
@@ -126,30 +127,36 @@ controller.onStatus(function(eventCode, msg) {
     Request for data from the WebSocket server based on the specified item and service.
     * **ric**
     
-        The Reuters Instrument Code (RIC) defining the item of interest.  Required.
+        The Reuters Instrument Code (RIC) defining the item of interest.  
+        Required.
 
     * **serviceName**
     
-        The name of the service providing the market data.  Required.
+        The name of the service providing the market data.  
+        Required.
 
     * **streaming**
     
-        Boolean value defining whether the data retrieved is streamed (true) or whether non-streaming snaphost data only (false).  Optional.  Default: true (streaming).
+        Boolean value defining whether the data retrieved is streamed (true) or whether non-streaming snaphost data only (false).  
+Optional.  Default: true (streaming).
 
     * **domain**
 
-        The domain model associated with the specified item (ric).  Refer to the documentation for all valid domain models.  Optional.  Default: 'MarketPrice'.
+        The domain model associated with the specified item (ric).  Refer to the documentation for all valid domain models.  
+Optional.  Default: 'MarketPrice'.
 
 * **TRWebSocketController.requestNewsStory(serviceName)**
 
     Request to open news stream.
     * **serviceName**
 
-        The name of the service providing the news data.  Required.
+        The name of the service providing the news data.  
+        Required.
 
 * **TRWebSocketController.closeRequest(id)**
 
-    Close the open streaming request as identified by the 'id' token.
+    Close the open streaming request as identified by the 'id' token. 
+    Required.
 
     * **id**
     
@@ -161,7 +168,8 @@ controller.onStatus(function(eventCode, msg) {
 
 * **TRWebSocketController.loggedIn()**
 
-    Determine if we have successfully connected and logged in to our WebSocket server.  Returns boolean.
+    Determine if we have successfully connected and logged in to our WebSocket server.  
+    Returns boolean.
 
 * **TRWebSocketController.onStatus(eventFn)**
 
@@ -177,23 +185,28 @@ controller.onStatus(function(eventCode, msg) {
 
             * **status.connected**
         
-                Successfully connected into the Elektron WebSocket server.
+                Successfully connected into the Elektron WebSocket server.  
+                The 'msg' object is not defined.
 
             * **status.disconnected**
             
-                Connection failed to our Elektron WebSocket server.
+                Connection failed to our Elektron WebSocket server.  
+                The 'msg' object is not defined.
 
             * **status.loginResponse**
         
                 After a successfull connection, a login request to the server is submitted.  The login response will provide results of the request within the 'msg' object.
+                The 'msg' object contains the Elektron WebSocket loging response.  See the WebSocket API documentation for details.
 
             * **status.msgStatus**
         
-                Item response based on request for data.  The 'msg' object will contain status details of the request. 
+                Item response based on request for data.  
+                The 'msg' object contains the Elektron WebSocket status message.  See the WebSocket API documentation for details. 
 
             * **status.processingError**
         
-                Generic controller processing error using resulting from issues with environment/browser etc.  The 'msg' object will contain the details.
+                Generic controller processing error using resulting from issues with environment/browser etc.  
+                The 'msg' object the error text.
 
         * **msg**
     
