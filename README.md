@@ -42,7 +42,8 @@ var quoteController = new TRWebSocketController();
 // Connect into the WebSocket server
 quoteController.connect("wsServer:14002", "user");
 
-// Request for streaming quotes from the service 'ELEKTRON_SERVICE'.  Returns 'id' used to eventually close subscription
+// Request for streaming quotes from the service 'ELEKTRON_SERVICE'.  
+// Returns 'id' used to eventually close subscription
 var id = quoteController.requestData("TRI.N", "ELEKTRON_SERVICE");
 
 // Capture market data quotes
@@ -61,7 +62,8 @@ var newsController = new TRWebSocketController();
 // Connect into the WebSocket server
 newsController.connect("wsServer:14002", "user");
 
-// Request for streaming news from the service 'ELEKTRON_SERVICE'.  Returns 'id' used to eventually close subscription
+// Request for streaming news from the service 'ELEKTRON_SERVICE'.  
+// Returns 'id' used to eventually close subscription
 var id = newsController.requestNewsStory("ELEKTRON_SERVICE");
 
 // Capture streaming headlines
