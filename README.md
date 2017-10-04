@@ -8,14 +8,14 @@ Created by Platform Services GitHub tool on Mon Oct 2 2017
 
 * [Disclaimer](#disclaimer)
 
-* [Prerequisites](#prerequisites)
+* [Package](#package)
 
 * [Usage](#usage)
 
 * [Interface](#interface)
 
 ## <a id="overview"></a>Overview
-The Elektron WebSocket Controller is a generic interface used to manage all communication to the Thomson Reuters Elektron WebSocket server delivering realtime market data.  Designed as a reusable container, this simple Javascript framework can be used in a variety of simple web-based applications and prototypes delivering realtime content within your browser.  
+The Elektron WebSocket Controller is a Javascript interface used to manage all communication to the Thomson Reuters Elektron WebSocket server delivering realtime market data to the browser.  Designed as a reusable container, this simple Javascript framework can be used in a variety of simple web-based applications and prototypes delivering realtime content within your browser.  
 
 For any question related to this component, please use the Developer Community [Q&A Forum](https://community.developers.thomsonreuters.com).
 
@@ -24,12 +24,17 @@ For any question related to this component, please use the Developer Community [
 ## <a id="disclaimer"></a>Disclaimer
 The source code presented in this project has been written by Thomson Reuters only for the purpose of illustrating the concepts of interfacing with Thomson Reuters Elektron WebSocket service.  It has not been tested for a usage in production environments.
 
-## <a id="prerequisites"></a>Prerequisites
+## <a id="package"></a>Package
 
 Software components used:
 
-* [Elektron WebSocket API](https://developers.thomsonreuters.com/elektron/websocket-api-early-access) - Thomson Reuters interface to access Elektron real-time market data.
-* Access to the Thomson Reuters Advanced Distribution Server (ADS) version 3 with an enabled WebSocket service. 
+* [Elektron WebSocket API](https://developers.thomsonreuters.com/elektron/websocket-api-early-access) - Thomson Reuters interface to access Elektron real-time market data. 
+
+* [Pako](https://www.npmjs.com/package/pako) (v1.0.6) - Nodejs-based ibrary used to decompress Elektron Machine Readable News (MRN) headlines and stories.  Applications utilizing the news capabilities offered within this interface must include the 'zlib.js' script within their HTML.
+
+    **Note**: The 'zlib.js' file was prepared by [browserfying](http://browserify.org/) the pako library.  This is a process to bring the capabilities of the node.js library to the browser.  For convenience and interest, I've included the node.js-based file called 'pako.js' which I used to create the 'zlib.js' package.  Refer to 'pako.js' file for general instructions as to how I did this.
+
+* Access to the Thomson Reuters Advanced Distribution Server (ADS) version 3 with an enabled WebSocket service.
 
 ## <a id="usage"></a>Usage
 
