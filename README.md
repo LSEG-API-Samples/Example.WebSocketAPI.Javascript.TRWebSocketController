@@ -154,7 +154,7 @@ Optional.  Default: 'MarketPrice'.
 
 * **TRWebSocketController.requestNewsStory(serviceName)**
 
-    Request to open the news stream on the NTA (NewsTextAnalytics) domain.  By executing this method, the TRWebSocketController will automatically manage the collection and decompressing of all compressed segments coming from the NTA domain.  Once the complete story arrives from the service, the contents of the NTA envelop will be presented in a readble format to the [onNewsStory()](#newsCb) callback.
+    Request to open the news stream on the NTA (NewsTextAnalytics) domain.  By executing this method, the TRWebSocketController will automatically manage the collection and decompressing of all compressed segments coming from the NTA domain.  Once the complete story arrives from the service, the contents of the NTA envelop will be presented in a readable format to the [onNewsStory()](#newsCb) callback.
     * **serviceName**
 
         The name of the service providing the news data.  
