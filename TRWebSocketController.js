@@ -392,11 +392,6 @@ TRWebSocketController.prototype._onMessage = function (msg)
 //********************************************************************************************************* 
 TRWebSocketController.prototype._processNewsEnvelope = function(msg)
 {
-    if ( this.nick != msg.Fields.MRN_SRC ) {
-        console.log("Key changed from: ["+this.nick+"] to [" + msg.Fields.MRN_SRC + "]");
-        this.nick = msg.Fields.MRN_SRC;
-    }
-    
     // We ignore the MRN Refresh envelope and ensure we're dealing with a 'NewsTextAnalytics' domain.    
     if ( msg.Type === "Update" && msg.Domain === NEWS_STORY ) {
         //********************************************************************************
