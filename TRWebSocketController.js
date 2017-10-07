@@ -44,7 +44,7 @@ function TRWebSocketController() {
         appID: "",
         position: ""
     };
-    
+
     // Manage our Request ID's required by the Elektron WebSocket interface
     var  _requestIDs = [];
     
@@ -100,16 +100,18 @@ function TRWebSocketController() {
     // Manage our News Envelope
     var _newsEnvelope = {};
     
-    this._getNewsEnvelope = function(guid) {
-        return(_newsEnvelope[guid]);
+    // A unique article is based on the unique key or ric+mrn_src+guid.  However, the ric is static so no need to
+    // include as the key.
+    this._getNewsEnvelope = function(key) {
+        return(_newsEnvelope[key]);
     }
     
-    this._setNewsEnvelope = function(guid, envelope) {
-        _newsEnvelope[guid] = envelope;
+    this._setNewsEnvelope = function(key, envelope) {
+        _newsEnvelope[key] = envelope;
     }
     
-    this._deleteNewsEnvelope = function(guid) {
-        delete _newsEnvelope[guid];
+    this._deleteNewsEnvelope = function(key) {
+        delete _newsEnvelope[key];
     }
 }
 
@@ -196,7 +198,6 @@ TRWebSocketController.prototype.requestNewsStory = function(serviceName)
 {
     var id = this.requestData("MRN_STORY", serviceName, true, NEWS_STORY);
     this._setCallback(id, this._processNewsEnvelope);
-    this._processNewsEnvelope({});
     
     return(id);
 };
@@ -331,7 +332,7 @@ TRWebSocketController.prototype._onClose = function (closeEvent) {
 //  Data message:   Refresh and update market data messages resulting from our item request
 //*********************************************************************************************************  
 TRWebSocketController.prototype._onMessage = function (msg) 
-{
+{    
     // Ensure we have a valid message
     if (typeof (msg.data) === 'string' && msg.data.length > 0)
     {
@@ -341,41 +342,41 @@ TRWebSocketController.prototype._onMessage = function (msg)
 
             // Our messages are packed within arrays - iterate
             var size = result.length;
-            var msg = {}
+            var data = {}
             for (var i=0; i < size; i++) {
-                msg = result[i];
+                data = result[i];
                 
                 // Did we encounter a PING?
-                if ( msg.Type === "Ping" ) {
+                if ( data.Type === "Ping" ) {
                     // Yes, so send a Pong to keep the channel alive
                     this._pong();
-                } else if ( msg.Domain === "Login" ) { // Did we get our login response?
+                } else if ( data.Domain === "Login" ) { // Did we get our login response?
                     // Yes, process it. Report to our application interface
-                    this._loggedIn = msg.State.Data === "Ok";
-                    if ( this.isCallback(this._statusCb) ) this._statusCb(this.status.loginResponse, msg);
-                } else if ( msg.Type === "Status" ) {
+                    this._loggedIn = data.State.Data === "Ok";
+                    if ( this.isCallback(this._statusCb) ) this._statusCb(this.status.loginResponse, data);
+                } else if ( data.Type === "Status" ) {
                     // Issue on our message stream.  Make our ID available is stream is closed.
-                    if ( msg.State.Stream == "Closed") this._removeID(msg.Id);
+                    if ( data.State.Stream == "Closed") this._removeID(data.Id);
                     
                     // Report potential issues with our requested market data item
-                    if ( this.isCallback(this._statusCb) ) this._statusCb(this.status.msgStatus, msg);                        
+                    if ( this.isCallback(this._statusCb) ) this._statusCb(this.status.msgStatus, data);                        
                 }
                else {
-                    // Otherwise, we must have received some kind of market data message.
-                    
+                    // Otherwise, we must have received some kind of market data message.       
                     // First, retrieve the processing callback
-                    this._msgCb = this._getCallback(msg.Id);
+                    this._msgCb = this._getCallback(data.Id);
                     
                     // Next, update our ID table based on the refresh
-                    if ( msg.Type === "Refresh" && msg.State.Stream === "NonStreaming" ) this._removeID(msg.Id);
+                    if ( data.Type === "Refresh" && data.State.Stream === "NonStreaming" ) this._removeID(data.Id);
                     
                     // Process the message
-                    if ( this.isCallback(this._msgCb) ) this._msgCb(msg);
+                    if ( this.isCallback(this._msgCb) ) this._msgCb(data);
                }
             }
         }
         catch (e) {
             // Processing error.  Report to our application interface
+            console.log(e);
             if ( this.isCallback(this._statusCb) ) this._statusCb(this.status.processingError, e.message);
         }       
     }
@@ -391,6 +392,11 @@ TRWebSocketController.prototype._onMessage = function (msg)
 //********************************************************************************************************* 
 TRWebSocketController.prototype._processNewsEnvelope = function(msg)
 {
+    if ( this.nick != msg.Fields.MRN_SRC ) {
+        console.log("Key changed from: ["+this.nick+"] to [" + msg.Fields.MRN_SRC + "]");
+        this.nick = msg.Fields.MRN_SRC;
+    }
+    
     // We ignore the MRN Refresh envelope and ensure we're dealing with a 'NewsTextAnalytics' domain.    
     if ( msg.Type === "Update" && msg.Domain === NEWS_STORY ) {
         //********************************************************************************
@@ -404,7 +410,7 @@ TRWebSocketController.prototype._processNewsEnvelope = function(msg)
         
         if ( msg.Fields.FRAG_NUM > 1 ) {
             // We are now processing more than one part of an envelope - retrieve the current details
-            var envelope = this._getNewsEnvelope(msg.Fields.GUID);
+            var envelope = this._getNewsEnvelope(msg.Fields.MRN_SRC+msg.Fields.GUID);
             if ( envelope ) {
                 envelope.fragments = envelope.fragments + fragment;
                 
@@ -416,11 +422,11 @@ TRWebSocketController.prototype._processNewsEnvelope = function(msg)
                 fragment = envelope.fragments;
   
                 // Remove our envelope 
-                this._deleteNewsEnvelope(msg.Fields.GUID);
+                this._deleteNewsEnvelope(msg.Fields.MRN_SRC+msg.Fields.GUID);
             }
         } else if ( fragment.length < msg.Fields.TOT_SIZE) {
             // We don't have all fragments yet - save what we have
-            this._setNewsEnvelope(msg.Fields.GUID, {fragments: fragment, totalSize: msg.Fields.TOT_SIZE});
+            this._setNewsEnvelope(msg.Fields.MRN_SRC+msg.Fields.GUID, {fragments: fragment, totalSize: msg.Fields.TOT_SIZE});
             return;
         }
 
@@ -434,11 +440,10 @@ TRWebSocketController.prototype._processNewsEnvelope = function(msg)
         // Turn number array into byte-array
         var binArr = new Uint8Array(charArr);
 
-        // Decompress fragments of data
-        var data = zlib.pako.inflate(binArr);
+        // Decompress fragments of data and convert to Ascii
+        var strData = zlib.pako.inflate(binArr, {to: 'string'});
 
-        // Convert gunzipped byteArray back to ascii string:
-        var strData = String.fromCharCode.apply(null, new Uint16Array(data));
+        // Prepare as JSON object
         var contents = JSON.parse(strData);
         
         // Present our final story to the application
