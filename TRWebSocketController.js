@@ -2,32 +2,32 @@
 // TRWebSocketController
 //
 // The TRWebSocketController is a generic interface supporting the ability to connect and receive real-time market data quotes from the
-// Thomson Reuters Elektron WebSocket interface.  The controller is intentionally designed as a generic interface allowing appplication
-// usage to work with any Javascript framework.
+// Thomson Reuters Elektron WebSocket interface.  The controller is intentionally designed as a reusable interface allowing appplication
+// communcation to work with any Javascript framework.
 //
 // Interface:
 //
 //      TRWebSocketController()
 //      TRWebSocketController.connect(server, user, appId="256", position="127.0.0.1");
 //      TRWebSocketController.requestData(ric, serviceName, streaming=true, domain="MarketPrice");
-//      TRWebSocketController.requestNewsStory(serviceName);
+//      TRWebSocketController.requestNews(serviceName, ric="MRN_STORY");
 //      TRWebSocketController.closeRequest(id)
 //      TRWebSocketController.closeAllRequests()
 //      TRWebSocketController.loggedIn()
 //      TRWebSocketController.onStatus(eventFn)
 //      TRWebSocketController.onMarketData(eventFn)
-//      TRWebSocketController.onNewsStory(eventFn)
+//      TRWebSocketController.onNews(eventFn)
 //
 // Status Events:
 //      TRWebSocketController.status
 //
 // Author:  Nick Zincone
 // Version: 1.0
-// Date:    September 2017.
+// Date:    October 2017.
 //****************************************************************************************************************************************** 
 
 
-const NEWS_STORY = "NewsTextAnalytics";
+const MRN_DOMAIN = "NewsTextAnalytics";
 
 //
 // TRWebSocketController()
@@ -127,8 +127,8 @@ TRWebSocketController.prototype.status = {
 
 //
 // TRWebSocketController.connect(server, user, appId="256", position="127.0.0.1")
-// Initiate an asynchronous connection request to the specified server.  Upon successful connection, issue a login to our server
-// using the supplied user/appId/position login parameters.
+// Initiate an asynchronous connection request to the specified server.  Upon successful connection, the 
+// framework will automatically issue a login to using the supplied user/appId/position parameters.
 //
 // Parameters:
 //      server      Address of the Elektron WebSocket server.  Format: hostname:port.  Required.
@@ -149,12 +149,12 @@ TRWebSocketController.prototype.connect = function(server, user, appId="256", po
 
 //
 // TRWebSocketController.requestData(ric, serviceName, streaming=true, domain="MarketPrice")
-// Request the market data from our WebSocket server.
+// Request market data from our WebSocket server.
 //
 // Parameters:
-//      ric          Reuters Instrument Code defining the market data item.  Eg: AAPL.O 
+//      ric          Reuters Instrument Code defining the market data item.  Eg: TRI.N 
 //      serviceName  Name of service where market data is collected
-//      streaming    Streaming-based (subscription) or Non-streaming (snapshot).  Default: streaming.
+//      streaming    Boolean defining streaming-based (subscription) or Non-streaming (snapshot).  Default: true (streaming).
 //      domain       Domain model for request.  Default: MarketPrice.
 //
 // Returns: ID of request.  This ID is used to close streaming requests only.  Closing a non-streaming request has no effect.
@@ -186,17 +186,23 @@ TRWebSocketController.prototype.requestData = function(ric, serviceName, streami
 };
 
 //
-// TRWebSocketController.requestNewsStory(serviceName)
-// Request the MRN_STORY news story from our WebSocket server.
+// TRWebSocketController.requestNews(serviceName, ric="MRN_STORY")
+// Request the specified news content set from our WebSocket server.
 //
 // Parameters:
 //      serviceName  Name of service where market data is collected
+//		ric			 Name of the News content set - default: MRN_STORY
+//					 Valid news RICs are:
+//						MRN_STORY: 	  Real-time News (headlines and stories)
+//						MRN_TRNA: 	  News Analytics: Company and C&E assets
+//						MRN_TRNA_DOC: News Analytics: Macroeconomic News and Events
+//						MRN_TRSI: 	  News Sentiment Indices
 //
 // Returns: ID of request.  This ID is used to close the news story.
 // 
-TRWebSocketController.prototype.requestNewsStory = function(serviceName)
+TRWebSocketController.prototype.requestNews = function(serviceName, ric="MRN_STORY")
 {
-    var id = this.requestData("MRN_STORY", serviceName, true, NEWS_STORY);
+    var id = this.requestData(ric, serviceName, true, MRN_DOMAIN);
     this._setCallback(id, this._processNewsEnvelope);
     
     return(id);
@@ -239,11 +245,10 @@ TRWebSocketController.prototype.closeAllRequests = function()
 // onStatus
 // Capture all status events related to connections, logins and general message status.  
 //
-// Parameters:
-//      status {
-//          statusCode: code,
-//          statusMsg:  msg   
-//      }
+// Event function: f(eventCode, msg)
+//    Parameters:
+//		eventCode: 	value representing the type of status event (See below)
+//		msg:		Associated msg, if any, for the specified event (See below)
 //
 //      where code/msg is:
 //          0 - processingError
@@ -262,23 +267,30 @@ TRWebSocketController.prototype.onStatus = function(f) {
 
 //
 // onMarketData
-// Presents the market data refresh/update messages.  
+// Presents the market data refresh/update messages.
+//
+// Event function: f(msg)
+//    Parameters:
+//		msg: Elektron WebSocket market data message.  Refer to the Elektron WebSocket API documentation for details.
 //
 // Parameters:
 //      msg - Elektron WebSocket market data message.  Refer to the Elektron WebSocket API documentation for details.
+//		ric - Name of the News content set - See requestNews() method for valid News RICs.
 //
 TRWebSocketController.prototype.onMarketData = function(f) {
     if ( this.isCallback(f) ) this._marketDataCb = f;
 }
 
 //
-// onNewsStory
-// Presents the news story to our callback.
+// onNews
+// Presents the news contents to our callback.
 //
-// Parameters:
-//      msg - Elektron WebSocket news headline and story.
+// Event function: f(ric, msg)
+//    Parameters:
+//		ric: RIC identifying the News content set - See requestNews() method for valid News RICs.
+//		msg: Contents of the News envelope for the associated content set (RIC).
 //
-TRWebSocketController.prototype.onNewsStory = function(f) {
+TRWebSocketController.prototype.onNews = function(f) {
     if ( this.isCallback(f) ) this._newsStoryCb = f;
 }
 
@@ -332,7 +344,7 @@ TRWebSocketController.prototype._onClose = function (closeEvent) {
 //  Data message:   Refresh and update market data messages resulting from our item request
 //*********************************************************************************************************  
 TRWebSocketController.prototype._onMessage = function (msg) 
-{    
+{
     // Ensure we have a valid message
     if (typeof (msg.data) === 'string' && msg.data.length > 0)
     {
@@ -363,7 +375,9 @@ TRWebSocketController.prototype._onMessage = function (msg)
                 }
                else {
                     // Otherwise, we must have received some kind of market data message.       
-                    // First, retrieve the processing callback
+                    // First, retrieve the processing callback.  
+					// Note: the processing callback is defined when a user requests for data 
+					//		 via requestData() or requestNews()
                     this._msgCb = this._getCallback(data.Id);
                     
                     // Next, update our ID table based on the refresh
@@ -384,66 +398,78 @@ TRWebSocketController.prototype._onMessage = function (msg)
 
 //********************************************************************************************************* 
 // _processNewsEnvelope
-// We received an MRN news story message which is an envelop around the specific details of the headline
-// and news story.  Preprocess this envelop prior to sending off to the news story application callback.
+// We received an MRN news message which is an envelop around the specific details of the news contents.
+// Preprocess this envelop prior to sending off to the news application callback.
 //
-// Note: this routine is only executed if application requested for news story using the convenient method
-//       call: requestNewsStory().
+// Note: this routine is only executed if application requested for news using the convenient method
+//       call: requestNews().
 //********************************************************************************************************* 
 TRWebSocketController.prototype._processNewsEnvelope = function(msg)
 {
-    // We ignore the MRN Refresh envelope and ensure we're dealing with a 'NewsTextAnalytics' domain.    
-    if ( msg.Type === "Update" && msg.Domain === NEWS_STORY ) {
-        //********************************************************************************
-        // Before we start processing our fragment, we must ensure we have all of them.
-        // The GUID field is used to identify our envelope containing each fragment. We
-        // know we have all fragments when the total size of the fragment == TOT_SIZE.
-        //********************************************************************************
-  
-        // Decode base64 (convert ascii to binary)  
-        var fragment = atob(msg.Fields.FRAGMENT);
-        
-        if ( msg.Fields.FRAG_NUM > 1 ) {
-            // We are now processing more than one part of an envelope - retrieve the current details
-            var envelope = this._getNewsEnvelope(msg.Fields.MRN_SRC+msg.Fields.GUID);
-            if ( envelope ) {
-                envelope.fragments = envelope.fragments + fragment;
-                
-                // Check to make sure we have everything.
-                if ( envelope.fragments.length < envelope.totalSize)
-                    return;  // No - wait for some more
+	try {
+		// We ignore the MRN Refresh envelope and ensure we're dealing with a 'NewsTextAnalytics' domain.    
+		if ( msg.Type === "Update" && msg.Domain === MRN_DOMAIN ) {
+			//********************************************************************************
+			// Before we start processing our fragment, we must ensure we have all of them.
+			// The GUID field is used to identify our envelope containing each fragment. We
+			// know we have all fragments when the total size of the fragment == TOT_SIZE.
+			//********************************************************************************
+	  
+			// Decode base64 (convert ascii to binary)  
+			var fragment = atob(msg.Fields.FRAGMENT);
+			
+			// Define the news item key - RIC:MRN_SRC:GUID.
+			// Used to reference our unique items for envelop management.
+			var key = msg.Key.Name + ":" + msg.Fields.MRN_SRC + ":" + msg.Fields.GUID;
 
-                // Yes - process 
-                fragment = envelope.fragments;
-  
-                // Remove our envelope 
-                this._deleteNewsEnvelope(msg.Fields.MRN_SRC+msg.Fields.GUID);
-            }
-        } else if ( fragment.length < msg.Fields.TOT_SIZE) {
-            // We don't have all fragments yet - save what we have
-            this._setNewsEnvelope(msg.Fields.MRN_SRC+msg.Fields.GUID, {fragments: fragment, totalSize: msg.Fields.TOT_SIZE});
-            return;
-        }
+			if ( msg.Fields.FRAG_NUM > 1 ) {
+				// We are now processing more than one part of an envelope - retrieve the current details
+				var envelope = this._getNewsEnvelope(key);
+				if ( envelope ) {
+					envelope.fragments = envelope.fragments + fragment;
+					
+					// Check to make sure we have everything.
+					if ( envelope.fragments.length < envelope.totalSize)
+						return;  // No - wait for some more
 
-        // *********************************************************
-        // All fragments have been received for this story - process
-        // *********************************************************
-        
-        // Convert binary string to character-number array
-        var charArr = fragment.split('').map(function(x){return x.charCodeAt(0);});
-        
-        // Turn number array into byte-array
-        var binArr = new Uint8Array(charArr);
+					// Yes - process 
+					fragment = envelope.fragments;
+	  
+					// Remove our envelope 
+					this._deleteNewsEnvelope(key);
+				}
+			} else if ( fragment.length < msg.Fields.TOT_SIZE) {
+				// We don't have all fragments yet - save what we have
+				this._setNewsEnvelope(key, {fragments: fragment, totalSize: msg.Fields.TOT_SIZE});
+				return;
+			}
 
-        // Decompress fragments of data and convert to Ascii
-        var strData = zlib.pako.inflate(binArr, {to: 'string'});
+			// *********************************************************
+			// All fragments have been received for this story - process
+			// *********************************************************
+			
+			// Convert binary string to character-number array
+			var charArr = fragment.split('').map(function(x){return x.charCodeAt(0);});
+			
+			// Turn number array into byte-array
+			var binArr = new Uint8Array(charArr);
 
-        // Prepare as JSON object
-        var contents = JSON.parse(strData);
-        
-        // Present our final story to the application
-        if ( this.isCallback(this._newsStoryCb) ) this._newsStoryCb(contents);
-    }
+			// Decompress fragments of data and convert to Ascii
+			var strData = zlib.pako.inflate(binArr, {to: 'string'});
+
+			// Prepare as JSON object
+			var contents = JSON.parse(strData);
+			
+			// Present our final story to the application
+			if ( this.isCallback(this._newsStoryCb) ) this._newsStoryCb(msg.Key.Name, contents);
+		}
+	}
+	catch (e) {
+		// Processing error.  Report to our application interface
+		console.log(e);
+		console.log(msg);
+		if ( this.isCallback(this._statusCb) ) this._statusCb(this.status.processingError, e.message);
+	} 	
 }
 
 //********************************************************************************************************* 
