@@ -67,12 +67,12 @@ var newsController = new TRWebSocketController();
 // Connect into the WebSocket server
 newsController.connect("wsServer:14002", "user");
 
-// Request for streaming news from the service 'ELEKTRON_SERVICE'.  
+// Request for news content from the service 'ELEKTRON_SERVICE'.  Defaults to streaming headlines and stories (MRN_STORY domain).  
 // Returns 'id' used to eventually close subscription
-var id = newsController.requestNewsStory("ELEKTRON_SERVICE");
+var id = newsController.requestNews("ELEKTRON_SERVICE");
 
-// Capture streaming headlines
-newsController.onNewsStory(function(story) {
+// Capture streaming news content
+newsController.onNews(function(ric, story) {
     console.log(story.headline);
     console.log(story.body);
 }
@@ -152,13 +152,25 @@ Optional.  Default: true (streaming).
         The domain model associated with the specified item (ric).  Refer to the documentation for all valid domain models.  
 Optional.  Default: 'MarketPrice'.
 
-* **TRWebSocketController.requestNewsStory(serviceName)**
+* <a id="news"></a>**TRWebSocketController.requestNews(serviceName, ric="MRN_STORY")**
 
-    Request to open the news stream on the NTA (NewsTextAnalytics) domain.  By executing this method, the TRWebSocketController will automatically manage the collection and decompressing of all compressed segments coming from the NTA domain.  Once the complete story arrives from the service, the contents of the NTA envelop will be presented in a readable format to the [onNewsStory()](#newsCb) callback.
+    Request to open the news stream on the NTA (NewsTextAnalytics) domain.  By executing this method, the TRWebSocketController will automatically manage the collection and decompressing of all compressed segments coming from the NTA domain.  Once the complete contents arrives from the service, the contents of the NTA envelope will be presented as a JSON object to the [onNews()](#newsCb) callback.
     * **serviceName**
 
         The name of the service providing the news data.  
         Required.
+
+	* **ric**
+    
+		Name of the News content set.  
+        Optional.  Default: MRN_STORY
+
+		Valid news RICs are:
+
+			MRN_STORY:    Real-time News (headlines and stories)
+			MRN_TRNA:     News Analytics: Company and C&E assets
+			MRN_TRNA_DOC: News Analytics: Macroeconomic News and Events
+			MRN_TRSI:     News Sentiment Indices
 
 * **TRWebSocketController.closeRequest(id)**
 
@@ -232,17 +244,21 @@ Optional.  Default: 'MarketPrice'.
             Refer to the WebSocket API documentation for the data Messages received.
 
 ## <a id="newsCb"></a>
-* **TRWebSocketController.onNewsStory(eventFn)**
+* **TRWebSocketController.onNews(eventFn)**
     
-    Callback to capture market data message resulting from requestNewsStory() request.
+    Callback to capture news events resulting from requestNews() request.
 
     * **eventFn**
 
-        Callback signature: eventFn(msg)
+        Callback signature: eventFn(ric, msg)
+
+		* **ric**
+        
+			RIC name of the News content set.  See [requestNews()](#news) for details of valid News RICs.
 
         * **msg**
     
-            The contents of the NTA envelope containing all related fragments for the story.  The msg object is the uncompressed FRAGMENT portion of the news updates.
+            The contents of the NTA envelope containing all related fragments for the news events.  The msg object is the uncompressed FRAGMENT portion of the news updates.
 
 ### <a id="contributing"></a>Contributing
 
