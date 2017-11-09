@@ -38,6 +38,8 @@ Software components used:
 
 ## <a id="usage"></a>Usage
 
+The package contains a few examples demonstrating basic usage.
+
 Retrieving realtime quotes:
 
 ```
@@ -69,7 +71,7 @@ newsController.connect("wsServer:14002", "user");
 
 // Request for news content from the service 'ELEKTRON_SERVICE'.  Defaults to streaming headlines and stories (MRN_STORY domain).  
 // Returns 'id' used to eventually close subscription
-var id = newsController.requestNews("ELEKTRON_SERVICE");
+var id = newsController.requestNews("MRN_STORY", "ELEKTRON_SERVICE");
 
 // Capture streaming news content
 newsController.onNews(function(ric, story) {
@@ -129,41 +131,48 @@ controller.onStatus(function(eventCode, msg) {
 
         These 3 parameters are used as authentication to the ADS server.  Refer to the [WebSocket API documentation](https://developers.thomsonreuters.com/elektron/websocket-api-early-access/downloads) for specific details of each parameter.
 
-* **TRWebSocketController.requestData(ric, serviceName, streaming=true, domain="MarketPrice")**
+* **TRWebSocketController.requestData(ric, serviceName=null, streaming=true, domain="MarketPrice", view=null)**
 
     Request for data from the WebSocket server based on the specified item and service.
     * **ric**
     
-        The Reuters Instrument Code (RIC) defining the item of interest.  
+        String or array of names identifying the Reuters Instrument Code(s) - ric(s).
+
         Required.
 
     * **serviceName**
     
         The name of the service providing the market data.  
-        Required.
+        
+        Optional.  Default: service defaulted within ADS.
 
     * **streaming**
     
         Boolean value defining whether the data retrieved is streamed (true) or whether non-streaming snaphost data only (false).  
-Optional.  Default: true (streaming).
+        
+        Optional.  Default: true (streaming).
 
     * **domain**
 
         The domain model associated with the specified item (ric).  Refer to the documentation for all valid domain models.  
-Optional.  Default: 'MarketPrice'.
+        
+        Optional.  Default: 'MarketPrice'.
 
-* <a id="news"></a>**TRWebSocketController.requestNews(serviceName, ric="MRN_STORY")**
+    * **view**
+
+        Optionally, you can choose which fields to retrieve using the view array.  For example: ['BID', 'ASK'].
+        
+        Optional.  Default: all fields.
+
+* <a id="news"></a>**TRWebSocketController.requestNews(ric, serviceName=null)**
 
     Request to open the news stream on the NTA (NewsTextAnalytics) domain.  By executing this method, the TRWebSocketController will automatically manage the collection and decompressing of all compressed segments coming from the NTA domain.  Once the complete contents arrives from the service, the contents of the NTA envelope will be presented as a JSON object to the [onNews()](#newsCb) callback.
-    * **serviceName**
-
-        The name of the service providing the news data.  
-        Required.
 
 	* **ric**
     
-		Name of the News content set.  
-        Optional.  Default: MRN_STORY
+		String or array of names identifying the Reuters Instrument Code(s) - ric(s) used to represent the news content set of interest.
+        
+        Required.
 
 		Valid news RICs are:
 
@@ -172,14 +181,28 @@ Optional.  Default: 'MarketPrice'.
 			MRN_TRNA_DOC: News Analytics: Macroeconomic News and Events
 			MRN_TRSI:     News Sentiment Indices
 
-* **TRWebSocketController.closeRequest(id)**
+    * **serviceName**
 
-    Close the open streaming request as identified by the 'id' token. 
-    Required.
+        The name of the service providing the news data.  
 
-    * **id**
+        Optional.  Default: service defaulted within ADS.
+
+* **TRWebSocketController.closeRequest(ric, domain="MarketPrice")**
+
+    Close the open streaming requests as identified by the ric(s).
+    Required. 
+
+    * **ric**
     
-        Token identifier returned from requesting data (requestData(), requestNewsStory()).
+        String or array of names identifying the open streams.
+
+        Required.
+
+    * **domain**
+
+        The domain model associated with the specified items (ric).  Refer to the documentation for all valid domain models.  
+        
+        Optional.  Default: 'MarketPrice'.
 
 * **TRWebSocketController.closeAllRequests()**
 
@@ -270,4 +293,4 @@ Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c6
 
 ### <a id="license"></a>License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the [MIT License](https://opensource.org/licenses/MIT) - see the [LICENSE.md](LICENSE.md) file for details.  The Pako library is also distributed under the MIT license.

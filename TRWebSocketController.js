@@ -9,9 +9,9 @@
 //
 //      TRWebSocketController()
 //      TRWebSocketController.connect(server, user, appId="256", position="127.0.0.1");
-//      TRWebSocketController.requestData(ric, serviceName, streaming=true, domain="MarketPrice");
-//      TRWebSocketController.requestNews(serviceName, ric="MRN_STORY");
-//      TRWebSocketController.closeRequest(id)
+//      TRWebSocketController.requestData(ric, serviceName=null, streaming=true, domain="MarketPrice");
+//      TRWebSocketController.requestNews(ric, serviceName=null);
+//      TRWebSocketController.closeRequest(ric)
 //      TRWebSocketController.closeAllRequests()
 //      TRWebSocketController.loggedIn()
 //      TRWebSocketController.onStatus(eventFn)
@@ -23,7 +23,7 @@
 //
 // Author:  Nick Zincone
 // Version: 1.0
-// Date:    October 2017.
+// Date:    November 2017.
 //****************************************************************************************************************************************** 
 
 
@@ -46,56 +46,89 @@ function TRWebSocketController() {
     };
 
     // Manage our Request ID's required by the Elektron WebSocket interface
-    var  _requestIDs = [];
+    var _requestIDs = {};
+	var _openStreamTable = {};
+	var _lastID = 1;	// 0 - reserved for login
     
-    // Retrieve the next available ID from our ID table
-    this._getID = function() {
-        for (var i in _requestIDs) {
-            if (!_requestIDs[i].used) {
-                _requestIDs[i].used = true;
-                _requestIDs[i].processingCb = null;
-                return(parseInt(i));
-            }
-        }
-     
-        // Create a new entry
-        _requestIDs[_requestIDs.length] = {
-            used: true,
-            processingCb: null
-        }
-
-        return(_requestIDs.length-1);
+	// ***************************************************************
+	// _getNextID
+    // Retrieve the next available ID
+	// ***************************************************************
+    this._getNextID = function(ric, domain, cb) {
+		// Ensure the ID we return is valid
+		if ( _lastID == Number.MAX_SAFE_INTEGER ) _lastID = 0;
+		let nextID = _lastID;
+		
+		// If a request comes in for a batch, Elektron makes the assumption the ID's will be sequential from
+		// the base request.  That is, we make a request for a batch of 2 items with ID:13.  The 2 items will
+		// be given the IDs 14, 15 respectively.
+		if ( Array.isArray(ric) ) {
+			for (var i=0; i < ric.length; i++) {
+				// Check an upper limit.  If reached roll over and start again.
+				if ( _lastID == Number.MAX_SAFE_INTEGER ) _lastID = 1;
+				_lastID++;
+				
+				// Assign the new ID
+				this._assignNewID(ric[i] + ":" + domain, cb);
+			}
+		}
+		else {
+			// Assign the new ID
+			this._assignNewID(ric + ":" + domain, cb);
+			
+			_lastID++;	
+		}
+		
+		return(nextID);
     }
-
-    // Flag the request ID to be removed (available)
-    this._removeID = function(id) {
-        if ( _requestIDs[id].used ) {
-            _requestIDs[id].used  = false;
-            return(true);
-        }
-        return(false);
-    }
+	
+	// If we try to open the item under a new stream, Elektron will close the existing one
+	// And open under the new one.  We must ensure our tables are up to date.
+	this._assignNewID = function(item, cb) {
+		if ( _openStreamTable.hasOwnProperty(item) )
+			delete _requestIDs[_openStreamTable[item].id];
+		
+		_requestIDs[_lastID] = item;
+		_openStreamTable[item] = {id: _lastID, processingCb: cb};		
+	}
+	
     
-    // Get first ID with an open stream.  Note: ignores first entry - our login stream.
-    this._getAvailableStreams = function() {
+    // Retrieve the array of IDs for all the open streams.
+    this._getOpenStreams = function() {
         var result = [];
-        for (var i in _requestIDs)
-            if ( _requestIDs[i] && parseInt(i)>0 ) result[result.length] = i;
+        for (var i in _openStreamTable)
+            result.push(_openStreamTable[i].id);
         
         return(result);
     }
     
-    // Define specific callback for requested msg
-    this._setCallback = function(id, cb) {
-        if ( _requestIDs[id] )
-            _requestIDs[id].processingCb = cb;
-    }
-    
     // Retrieve specific processing callback based on id.
     this._getCallback = function(id) {
-        if ( _requestIDs[id] )
-            return( _requestIDs[id].processingCb );
+        if ( _requestIDs.hasOwnProperty(id) )
+            return( _openStreamTable[_requestIDs[id]].processingCb );
     }
+	
+    // Remove the item from our tables.  returns the ID associated with the request.
+    this._removeItem = function(item) {
+		let id = -1;
+		
+		if ( _openStreamTable.hasOwnProperty(item) ) {
+			id = _openStreamTable[item].id;
+			
+			// clean up tables
+			delete _requestIDs[_openStreamTable[item].id];
+			delete _openStreamTable[item];
+		}
+		
+		return(id);
+    }
+	
+	
+    // Remove the items, based on ID, from our table
+    this._removeID = function(id) {
+		if (_requestIDs.hasOwnProperty(id))
+			this._removeItem(_requestIDs[id]);
+	}		
 
     // Manage our News Envelope
     var _newsEnvelope = {};
@@ -145,6 +178,8 @@ TRWebSocketController.prototype.connect = function(server, user, appId="256", po
     this._loginParams.user = user;
     this._loginParams.appId = appId;
     this._loginParams.position = position;
+	
+	return(this);
 }
 
 //
@@ -152,21 +187,22 @@ TRWebSocketController.prototype.connect = function(server, user, appId="256", po
 // Request market data from our WebSocket server.
 //
 // Parameters:
-//      ric          Reuters Instrument Code defining the market data item.  Eg: TRI.N 
-//      serviceName  Name of service where market data is collected
+//      ric(s)       Reuters Instrument Codes defining the market data item. Required.  
+//					 Eg: 'TRI.N'   				(Single)
+//					 Eg: ['TRI.N', 'AAPL.O']	(Batch)
+//      serviceName  Name of service where market data is collected. Optional.  Default: service defaulted within ADS.
 //      streaming    Boolean defining streaming-based (subscription) or Non-streaming (snapshot).  Default: true (streaming).
 //      domain       Domain model for request.  Default: MarketPrice.
+//		View		 Array of fields to retrieve.  Default: All fields.
+//					 Eg: ["BID", "ASK"]
 //
-// Returns: ID of request.  This ID is used to close streaming requests only.  Closing a non-streaming request has no effect.
-// 
-TRWebSocketController.prototype.requestData = function(ric, serviceName, streaming=true, domain="MarketPrice")
+TRWebSocketController.prototype.requestData = function(rics, serviceName, streaming=true, domain="MarketPrice", view=null, cb=null)
 {
     if ( !this._loggedIn )
-        return(0);
+        return(this);
     
-    // Rolling ID
-    var id = this._getID();
-    this._setCallback(id, this._marketDataCb);
+    // Retrieve the next available ID
+    var id = this._getNextID(rics, domain, (cb==null ? this._marketDataCb : cb));
     
     // send marketPrice request message
     var marketPrice = {
@@ -174,57 +210,70 @@ TRWebSocketController.prototype.requestData = function(ric, serviceName, streami
         Streaming: streaming,
         Domain: domain,
         Key: {
-            Name: ric,
-            Service: serviceName
+            Name: rics
         }
     };
+	
+	if ( serviceName != undefined )
+		marketPrice.Key.Service = serviceName;
+	
+	if ( view != undefined )
+		marketPrice.View = view;
 
     // Submit to server
     this._send(JSON.stringify(marketPrice)); 
-
-    return(id);
 };
 
 //
-// TRWebSocketController.requestNews(serviceName, ric="MRN_STORY")
+// TRWebSocketController.requestNews(ric, serviceName=null)
 // Request the specified news content set from our WebSocket server.
 //
 // Parameters:
-//      serviceName  Name of service where market data is collected
-//		ric			 Name of the News content set - default: MRN_STORY
+//		ric			 Name of the News content set.  Required.
 //					 Valid news RICs are:
 //						MRN_STORY: 	  Real-time News (headlines and stories)
 //						MRN_TRNA: 	  News Analytics: Company and C&E assets
 //						MRN_TRNA_DOC: News Analytics: Macroeconomic News and Events
 //						MRN_TRSI: 	  News Sentiment Indices
-//
-// Returns: ID of request.  This ID is used to close the news story.
+//      serviceName  Name of service where news stream is collected.  Optional.  Default: service defaulted within ADS.
 // 
-TRWebSocketController.prototype.requestNews = function(serviceName, ric="MRN_STORY")
+TRWebSocketController.prototype.requestNews = function(ric, serviceName=null)
 {
-    var id = this.requestData(ric, serviceName, true, MRN_DOMAIN);
-    this._setCallback(id, this._processNewsEnvelope);
-    
-    return(id);
+    this.requestData(ric, serviceName, true, MRN_DOMAIN, null, this._processNewsEnvelope);
 };
 
-// TRWebSocketController.closeRequest(id)
+// TRWebSocketController.closeRequest(ric, domain)
 //
-// Close the open stream based on the 'id' returned when you requested the streaming data.
+// Close the open stream based on the specified ric and domain.
+//
+// Parameters:
+//      ric(s)       Reuters Instrument Codes defining the market data item. Required.
+//					 Eg: 'TRI.N'   (Single item)
+//					 Eg: ['TRI.N', 'AAPL.O']
+//      domain       Domain model for request.  Optional.  Default: MarketPrice.
 //   
-TRWebSocketController.prototype.closeRequest = function(id) 
+TRWebSocketController.prototype.closeRequest = function(ric, domain="MarketPrice")
 {
-    // Close request message
+	// Build id array
+	let ids = [];
+	
+	if ( Array.isArray(ric) ) {
+		for (var i=0; i < ric.length; i++)			
+			ids.push(this._removeItem(ric[i] + ":" + domain));
+	}
+	else
+		ids.push(this._removeItem(ric + ":" + domain));
+	
+    // Close the open streams...
     var close = {
-        Id: id,
+        Id: (ids.length == 1 ? ids[0] : ids),
         Type: "Close"
     };
 
     // Submit to server
     this._send(JSON.stringify(close));
-    
-    // Cleanup our ID table
-    this._removeID(id);
+	
+	return(this);
 };
 
 // TRWebSocketController.closeAllRequests
@@ -233,12 +282,21 @@ TRWebSocketController.prototype.closeRequest = function(id)
 //   
 TRWebSocketController.prototype.closeAllRequests = function() 
 {
-    // Retrieve all open streams
-    var openStreams = this._getAvailableStreams();
-    
-    // For each one, close
-    for (var i in openStreams)
-        this.closeRequest(parseInt(openStreams[i]));
+    // Close all open Streams
+	let ids = this._getOpenStreams();
+	
+	this._removeID(ids);
+	
+    // Close the open streams...
+    var close = {
+        Id: (ids.length == 1 ? ids[0] : ids),
+        Type: "Close"
+    };
+
+    // Submit to server
+    this._send(JSON.stringify(close));
+	
+	return(this);
 };
 
 //
@@ -494,7 +552,7 @@ TRWebSocketController.prototype._login = function ()
 {
     // send login request message
     var login = {
-        Id: this._getID(),
+        Id: 0,
         Domain:	"Login",
         Key: {
             Name: this._loginParams.user,
