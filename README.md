@@ -44,14 +44,13 @@ Retrieving realtime quotes:
 
 ```
 // Define our quote controller
-var quoteController = new TRWebSocketController();
+let quoteController = new TRWebSocketController();
 
 // Connect into the WebSocket server
 quoteController.connect("wsServer:14002", "user");
 
-// Request for streaming quotes from the service 'ELEKTRON_SERVICE'.  
-// Returns 'id' used to eventually close subscription
-var id = quoteController.requestData("TRI.N", "ELEKTRON_SERVICE");
+// Request for streaming quotes from the service 'ELEKTRON_SERVICE'.
+quoteController.requestData("TRI.N", {Service: "ELEKTRON_SERVICE"});
 
 // Capture market data quotes
 quoteController.onMarketData(function(msg) {
@@ -64,14 +63,13 @@ Retrieving realtime news headlines and stories:
 
 ```
 // Define our quote controller
-var newsController = new TRWebSocketController();
+let newsController = new TRWebSocketController();
 
 // Connect into the WebSocket server
 newsController.connect("wsServer:14002", "user");
 
 // Request for news content from the service 'ELEKTRON_SERVICE'.  Defaults to streaming headlines and stories (MRN_STORY domain).  
-// Returns 'id' used to eventually close subscription
-var id = newsController.requestNews("MRN_STORY", "ELEKTRON_SERVICE");
+newsController.requestNews("MRN_STORY", "ELEKTRON_SERVICE");
 
 // Capture streaming news content
 newsController.onNews(function(ric, story) {
@@ -122,8 +120,8 @@ controller.onStatus(function(eventCode, msg) {
     Initiate an asynchronous connection to the specified server endpoint.
     * **server**
         
-        IP/hostname and port of the Elektron Advanced Data Server (ADS) managing all communication.  
-        Required.  Parameter syntax:
+        IP/hostname and port of the Elektron Advanced Data Server (ADS) managing all communication. **Required**.
+        Parameter syntax:
         ``` 
         <IP/hostname>:<port>.  Eg: wsServer:14002
         ```
@@ -131,38 +129,33 @@ controller.onStatus(function(eventCode, msg) {
 
         These 3 parameters are used as authentication to the ADS server.  Refer to the [WebSocket API documentation](https://developers.thomsonreuters.com/elektron/websocket-api-early-access/downloads) for specific details of each parameter.
 
-* **TRWebSocketController.requestData(ric, serviceName=null, streaming=true, domain="MarketPrice", view=null)**
+* **TRWebSocketController.requestData(ric, options={})**
 
-    Request for data from the WebSocket server based on the specified item and service.
+    Request for data from the WebSocket server based on the specified item.
+
     * **ric**
     
-        String or array of names identifying the Reuters Instrument Code(s) - ric(s).
-
-        Required.
-
-    * **serviceName**
-    
-        The name of the service providing the market data.  
+        String or array of names identifying the Reuters Instrument Code(s) - ric(s). **Required**.  
         
-        Optional.  Default: service defaulted within ADS.
+        Eg: 'TRI.N'                 (Single)  
+        Eg: ['TRI.N', 'AAPL.O']     (Batch)
 
-    * **streaming**
-    
-        Boolean value defining whether the data retrieved is streamed (true) or whether non-streaming snaphost data only (false).  
-        
-        Optional.  Default: true (streaming).
+    * **options**
 
-    * **domain**
-
-        The domain model associated with the specified item (ric).  Refer to the documentation for all valid domain models.  
-        
-        Optional.  Default: 'MarketPrice'.
-
-    * **view**
-
-        Optionally, you can choose which fields to retrieve using the view array.  For example: ['BID', 'ASK'].
-        
-        Optional.  Default: all fields.
+        Collection of properties defining the different options for the request.  **Optional**.
+```
+       Options 
+       {
+           Service: <String>     // Name of service providing data. 
+                                 // Default: service defaulted within ADS.
+           Streaming: <Boolean>  // Boolean defining streaming (subscription) or Non-streaming (snapshot).  
+                                 // Default: true (streaming).
+           Domain: <String>      // Domain model for request.  
+                                 // Default: MarketPrice.
+           View: <Array>         // Fields to retrieve.  Eg: ["BID", "ASK"]
+                                 // Default: All fields.
+       }
+```    
 
 * <a id="news"></a>**TRWebSocketController.requestNews(ric, serviceName=null)**
 
@@ -170,9 +163,7 @@ controller.onStatus(function(eventCode, msg) {
 
 	* **ric**
     
-		String or array of names identifying the Reuters Instrument Code(s) - ric(s) used to represent the news content set of interest.
-        
-        Required.
+		String or array of names identifying the Reuters Instrument Code(s) - ric(s) used to represent the news content set of interest. **Required**.
 
 		Valid news RICs are:
 
@@ -183,26 +174,19 @@ controller.onStatus(function(eventCode, msg) {
 
     * **serviceName**
 
-        The name of the service providing the news data.  
-
-        Optional.  Default: service defaulted within ADS.
+        The name of the service providing the news data.  **Optional**. Default: service defaulted within ADS.
 
 * **TRWebSocketController.closeRequest(ric, domain="MarketPrice")**
 
-    Close the open streaming requests as identified by the ric(s).
-    Required. 
+    Close the open streaming requests as identified by the ric(s). **Required**.
 
     * **ric**
     
-        String or array of names identifying the open streams.
-
-        Required.
+        String or array of names identifying the open streams. **Required**.
 
     * **domain**
 
-        The domain model associated with the specified items (ric).  Refer to the documentation for all valid domain models.  
-        
-        Optional.  Default: 'MarketPrice'.
+        The domain model associated with the specified items (ric).  Refer to the documentation for all valid domain models. **Optional**.  Default: 'MarketPrice'.
 
 * **TRWebSocketController.closeAllRequests()**
 
@@ -293,4 +277,4 @@ Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c6
 
 ### <a id="license"></a>License
 
-This project is licensed under the [MIT License](https://opensource.org/licenses/MIT) - see the [LICENSE.md](LICENSE.md) file for details.  The Pako library is also distributed under the MIT license.
+This project and the Pako library are licensed under the [MIT License](https://opensource.org/licenses/MIT) - see the [LICENSE.md](LICENSE.md) file for details.

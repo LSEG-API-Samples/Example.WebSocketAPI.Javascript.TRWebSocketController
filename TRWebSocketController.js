@@ -9,9 +9,9 @@
 //
 //      TRWebSocketController()
 //      TRWebSocketController.connect(server, user, appId="256", position="127.0.0.1");
-//      TRWebSocketController.requestData(ric, serviceName=null, streaming=true, domain="MarketPrice");
+//      TRWebSocketController.requestData(ric, options={});
 //      TRWebSocketController.requestNews(ric, serviceName=null);
-//      TRWebSocketController.closeRequest(ric)
+//      TRWebSocketController.closeRequest(ric, domain="MarketPrice")
 //      TRWebSocketController.closeAllRequests()
 //      TRWebSocketController.loggedIn()
 //      TRWebSocketController.onStatus(eventFn)
@@ -46,9 +46,9 @@ function TRWebSocketController() {
     };
 
     // Manage our Request ID's required by the Elektron WebSocket interface
-    var _requestIDs = {};
-	var _openStreamTable = {};
-	var _lastID = 1;	// 0 - reserved for login
+    let _requestIDs = {};
+	let _openStreamTable = {};
+	let _lastID = 1;	// 0 - reserved for login
     
 	// ***************************************************************
 	// _getNextID
@@ -63,7 +63,7 @@ function TRWebSocketController() {
 		// the base request.  That is, we make a request for a batch of 2 items with ID:13.  The 2 items will
 		// be given the IDs 14, 15 respectively.
 		if ( Array.isArray(ric) ) {
-			for (var i=0; i < ric.length; i++) {
+			for (let i=0; i < ric.length; i++) {
 				// Check an upper limit.  If reached roll over and start again.
 				if ( _lastID == Number.MAX_SAFE_INTEGER ) _lastID = 1;
 				_lastID++;
@@ -95,8 +95,8 @@ function TRWebSocketController() {
     
     // Retrieve the array of IDs for all the open streams.
     this._getOpenStreams = function() {
-        var result = [];
-        for (var i in _openStreamTable)
+        let result = [];
+        for (let i in _openStreamTable)
             result.push(_openStreamTable[i].id);
         
         return(result);
@@ -131,7 +131,7 @@ function TRWebSocketController() {
 	}		
 
     // Manage our News Envelope
-    var _newsEnvelope = {};
+    let _newsEnvelope = {};
     
     // A unique article is based on the unique key or ric+mrn_src+guid.  However, the ric is static so no need to
     // include as the key.
@@ -183,42 +183,56 @@ TRWebSocketController.prototype.connect = function(server, user, appId="256", po
 }
 
 //
-// TRWebSocketController.requestData(ric, serviceName, streaming=true, domain="MarketPrice")
+// TRWebSocketController.requestData(ric, options = {})
 // Request market data from our WebSocket server.
 //
 // Parameters:
 //      ric(s)       Reuters Instrument Codes defining the market data item. Required.  
 //					 Eg: 'TRI.N'   				(Single)
 //					 Eg: ['TRI.N', 'AAPL.O']	(Batch)
-//      serviceName  Name of service where market data is collected. Optional.  Default: service defaulted within ADS.
-//      streaming    Boolean defining streaming-based (subscription) or Non-streaming (snapshot).  Default: true (streaming).
-//      domain       Domain model for request.  Default: MarketPrice.
-//		View		 Array of fields to retrieve.  Default: All fields.
-//					 Eg: ["BID", "ASK"]
+//		options		 Collection of properties defining the different options for the request.  Optional.
+//			Options 
+//			{
+//				Service: <String>		// Name of service providing data. 
+//										// Default: service defaulted within ADS.
+//				Streaming: <Boolean>	// Boolean defining streaming (subscription) or Non-streaming (snapshot).  
+//										// Default: true (streaming).
+//      		Domain: <String>		// Domain model for request.  
+//										// Default: MarketPrice.
+//				View: <Array>			// Fields to retrieve.  Eg: ["BID", "ASK"]
+//										// Default: All fields.
+//			}
 //
-TRWebSocketController.prototype.requestData = function(rics, serviceName, streaming=true, domain="MarketPrice", view=null, cb=null)
+TRWebSocketController.prototype.requestData = function(rics, options={})
 {
     if ( !this._loggedIn )
-        return(this);
+        return;
     
     // Retrieve the next available ID
-    var id = this._getNextID(rics, domain, (cb==null ? this._marketDataCb : cb));
+	let domain = (typeof options.Domain == "string" ? options.Domain : "MarketPrice");
+	let cb = (typeof options.cb == "function" ? options.cb : this._marketDataCb);
+    let id = this._getNextID(rics, domain, cb);
     
     // send marketPrice request message
-    var marketPrice = {
+    let marketPrice = {
         Id: id,
-        Streaming: streaming,
-        Domain: domain,
+		Domain: domain,
         Key: {
             Name: rics
         }
     };
+
+	// ******************
+	// Parse options
+	// ******************
+	if ( typeof options.Service == "string" )
+		marketPrice.Key.Service = options.Service;
 	
-	if ( serviceName != undefined )
-		marketPrice.Key.Service = serviceName;
+	if ( typeof options.Streaming == "boolean" )
+		marketPrice.Streaming = options.Streaming;
 	
-	if ( view != undefined )
-		marketPrice.View = view;
+	if ( Array.isArray(options.View) )
+		marketPrice.View = options.View;
 
     // Submit to server
     this._send(JSON.stringify(marketPrice)); 
@@ -239,7 +253,11 @@ TRWebSocketController.prototype.requestData = function(rics, serviceName, stream
 // 
 TRWebSocketController.prototype.requestNews = function(ric, serviceName=null)
 {
-    this.requestData(ric, serviceName, true, MRN_DOMAIN, null, this._processNewsEnvelope);
+    this.requestData(ric, {
+			Service: serviceName, 
+			Domain: MRN_DOMAIN, 
+			cb: this._processNewsEnvelope 
+		});
 };
 
 // TRWebSocketController.closeRequest(ric, domain)
@@ -258,14 +276,14 @@ TRWebSocketController.prototype.closeRequest = function(ric, domain="MarketPrice
 	let ids = [];
 	
 	if ( Array.isArray(ric) ) {
-		for (var i=0; i < ric.length; i++)			
+		for (let i=0; i < ric.length; i++)			
 			ids.push(this._removeItem(ric[i] + ":" + domain));
 	}
 	else
 		ids.push(this._removeItem(ric + ":" + domain));
 	
     // Close the open streams...
-    var close = {
+    let close = {
         Id: (ids.length == 1 ? ids[0] : ids),
         Type: "Close"
     };
@@ -288,7 +306,7 @@ TRWebSocketController.prototype.closeAllRequests = function()
 	this._removeID(ids);
 	
     // Close the open streams...
-    var close = {
+    let close = {
         Id: (ids.length == 1 ? ids[0] : ids),
         Type: "Close"
     };
@@ -408,12 +426,12 @@ TRWebSocketController.prototype._onMessage = function (msg)
     {
         try {
             // Parse the contents into a JSON structure for easy access
-            var result = JSON.parse(msg.data);
+            let result = JSON.parse(msg.data);
 
             // Our messages are packed within arrays - iterate
-            var size = result.length;
-            var data = {}
-            for (var i=0; i < size; i++) {
+            let size = result.length;
+            let data = {}
+            for (let i=0; i < size; i++) {
                 data = result[i];
                 
                 // Did we encounter a PING?
@@ -474,15 +492,15 @@ TRWebSocketController.prototype._processNewsEnvelope = function(msg)
 			//********************************************************************************
 	  
 			// Decode base64 (convert ascii to binary)  
-			var fragment = atob(msg.Fields.FRAGMENT);
+			let fragment = atob(msg.Fields.FRAGMENT);
 			
 			// Define the news item key - RIC:MRN_SRC:GUID.
 			// Used to reference our unique items for envelop management.
-			var key = msg.Key.Name + ":" + msg.Fields.MRN_SRC + ":" + msg.Fields.GUID;
+			let key = msg.Key.Name + ":" + msg.Fields.MRN_SRC + ":" + msg.Fields.GUID;
 
 			if ( msg.Fields.FRAG_NUM > 1 ) {
 				// We are now processing more than one part of an envelope - retrieve the current details
-				var envelope = this._getNewsEnvelope(key);
+				let envelope = this._getNewsEnvelope(key);
 				if ( envelope ) {
 					envelope.fragments = envelope.fragments + fragment;
 					
@@ -507,16 +525,16 @@ TRWebSocketController.prototype._processNewsEnvelope = function(msg)
 			// *********************************************************
 			
 			// Convert binary string to character-number array
-			var charArr = fragment.split('').map(function(x){return x.charCodeAt(0);});
+			let charArr = fragment.split('').map(function(x){return x.charCodeAt(0);});
 			
 			// Turn number array into byte-array
-			var binArr = new Uint8Array(charArr);
+			let binArr = new Uint8Array(charArr);
 
 			// Decompress fragments of data and convert to Ascii
-			var strData = zlib.pako.inflate(binArr, {to: 'string'});
+			let strData = zlib.pako.inflate(binArr, {to: 'string'});
 
 			// Prepare as JSON object
-			var contents = JSON.parse(strData);
+			let contents = JSON.parse(strData);
 			
 			// Present our final story to the application
 			if ( this.isCallback(this._newsStoryCb) ) this._newsStoryCb(msg.Key.Name, contents);
@@ -551,7 +569,7 @@ TRWebSocketController.prototype._processNewsEnvelope = function(msg)
 TRWebSocketController.prototype._login = function () 
 {
     // send login request message
-    var login = {
+    let login = {
         Id: 0,
         Domain:	"Login",
         Key: {
@@ -582,7 +600,7 @@ TRWebSocketController.prototype._login = function ()
 TRWebSocketController.prototype._pong = function () 
 {
     // Send Pong response
-    var pong = {
+    let pong = {
         Type: "Pong"
     };
 

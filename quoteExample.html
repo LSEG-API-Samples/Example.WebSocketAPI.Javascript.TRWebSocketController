@@ -13,7 +13,7 @@
 (function() 
 {    
     // Define our Elektron WebSocket interface
-    var elektronController = new TRWebSocketController();       
+    let elektronController = new TRWebSocketController();       
     
     // Connect into the server...
     elektronController.connect("ewa:15000", "user");
@@ -22,7 +22,7 @@
         switch (eventCode) {                    
             case this.status.connected:
                 // TRQuoteController first reports success then will automatically attempt to log in to the TR WebSocket server...
-                console.log("Successfully connected into the Elektron WebSocket server.  Logging in...");
+                console.log("Successfully connected into the Elektron WebSocket server.  Logging in.");
                 break;
 				
             case this.status.disconnected:
@@ -31,7 +31,7 @@
 				
             case this.status.loginResponse:
                 if (this.loggedIn())
-                    this.requestData("TRI.N", "ELEKTRON_EDGE");
+                    this.requestData("TRI.N", {Service: "ELEKTRON_EDGE"});
                 break;
 				
             default:
