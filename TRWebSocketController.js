@@ -49,51 +49,51 @@ function TRWebSocketController() {
 
     // Manage our Request ID's required by the Elektron WebSocket interface
     let _requestIDs = {};
-	let _openStreamTable = {};
-	let _lastID = 1;	// 0 - reserved for login
+    let _openStreamTable = {};
+    let _lastID = 1;    // 0 - reserved for login
     
-	// ***************************************************************
-	// _getNextID
+    // ***************************************************************
+    // _getNextID
     // Retrieve the next available ID
-	// ***************************************************************
+    // ***************************************************************
     this._getNextID = function(ric, domain, cb) {
-		// Ensure the ID we return is valid
-		if ( _lastID == Number.MAX_SAFE_INTEGER ) _lastID = 0;
-		let nextID = _lastID;
-		
-		// If a request comes in for a batch, Elektron makes the assumption the ID's will be sequential from
-		// the base request.  That is, we make a request for a batch of 2 items with ID:13.  The 2 items will
-		// be given the IDs 14, 15 respectively.
-		if ( Array.isArray(ric) ) {
-			for (var i=0; i < ric.length; i++) {
-				// Check an upper limit.  If reached roll over and start again.
-				if ( _lastID == Number.MAX_SAFE_INTEGER ) _lastID = 1;
-				_lastID++;
-				
-				// Assign the new ID
-				this._assignNewID(ric[i] + ":" + domain, cb);
-			}
-		}
-		else {
-			// Assign the new ID
-			this._assignNewID(ric + ":" + domain, cb);
-			
-			_lastID++;	
-		}
-		
-		return(nextID);
+        // Ensure the ID we return is valid
+        if ( _lastID == Number.MAX_SAFE_INTEGER ) _lastID = 0;
+        let nextID = _lastID;
+        
+        // If a request comes in for a batch, Elektron makes the assumption the ID's will be sequential from
+        // the base request.  That is, we make a request for a batch of 2 items with ID:13.  The 2 items will
+        // be given the IDs 14, 15 respectively.
+        if ( Array.isArray(ric) ) {
+            for (var i=0; i < ric.length; i++) {
+                // Check an upper limit.  If reached roll over and start again.
+                if ( _lastID == Number.MAX_SAFE_INTEGER ) _lastID = 1;
+                _lastID++;
+                
+                // Assign the new ID
+                this._assignNewID(ric[i] + ":" + domain, cb);
+            }
+        }
+        else {
+            // Assign the new ID
+            this._assignNewID(ric + ":" + domain, cb);
+            
+            _lastID++;  
+        }
+        
+        return(nextID);
     }
-	
-	// If we try to open the item under a new stream, Elektron will close the existing one
-	// And open under the new one.  We must ensure our tables are up to date.
-	this._assignNewID = function(item, cb) {
-		if ( _openStreamTable.hasOwnProperty(item) )
-			delete _requestIDs[_openStreamTable[item].id];
-		
-		_requestIDs[_lastID] = item;
-		_openStreamTable[item] = {id: _lastID, processingCb: cb};		
-	}
-	
+    
+    // If we try to open the item under a new stream, Elektron will close the existing one
+    // And open under the new one.  We must ensure our tables are up to date.
+    this._assignNewID = function(item, cb) {
+        if ( _openStreamTable.hasOwnProperty(item) )
+            delete _requestIDs[_openStreamTable[item].id];
+        
+        _requestIDs[_lastID] = item;
+        _openStreamTable[item] = {id: _lastID, processingCb: cb};       
+    }
+    
     
     // Retrieve the array of IDs for all the open streams.
     this._getOpenStreams = function() {
@@ -109,28 +109,28 @@ function TRWebSocketController() {
         if ( _requestIDs.hasOwnProperty(id) )
             return( _openStreamTable[_requestIDs[id]].processingCb );
     }
-	
+    
     // Remove the item from our tables.  returns the ID associated with the request.
     this._removeItem = function(item) {
-		let id = -1;
-		
-		if ( _openStreamTable.hasOwnProperty(item) ) {
-			id = _openStreamTable[item].id;
-			
-			// clean up tables
-			delete _requestIDs[_openStreamTable[item].id];
-			delete _openStreamTable[item];
-		}
-		
-		return(id);
+        let id = -1;
+        
+        if ( _openStreamTable.hasOwnProperty(item) ) {
+            id = _openStreamTable[item].id;
+            
+            // clean up tables
+            delete _requestIDs[_openStreamTable[item].id];
+            delete _openStreamTable[item];
+        }
+        
+        return(id);
     }
-	
-	
+    
+    
     // Remove the items, based on ID, from our table
     this._removeID = function(id) {
-		if (_requestIDs.hasOwnProperty(id))
-			this._removeItem(_requestIDs[id]);
-	}		
+        if (_requestIDs.hasOwnProperty(id))
+            this._removeItem(_requestIDs[id]);
+    }       
 
     // Manage our News Envelope
     let _newsEnvelope = {};
@@ -181,8 +181,8 @@ TRWebSocketController.prototype.connect = function(server, user, appId="256", po
     this._loginParams.user = user;
     this._loginParams.appId = appId;
     this._loginParams.position = position;
-	
-	return(this);
+    
+    return(this);
 }
 
 //
@@ -190,21 +190,21 @@ TRWebSocketController.prototype.connect = function(server, user, appId="256", po
 // Request market data from our WebSocket server.
 //
 // Parameters:
-//      ric(s)       Reuters Instrument Codes defining the market data item. Required.  
-//					 Eg: 'TRI.N'   				(Single)
-//					 Eg: ['TRI.N', 'AAPL.O']	(Batch)
-//		options		 Collection of properties defining the different options for the request.  Optional.
-//			Options 
-//			{
-//				Service: <String>		// Name of service providing data. 
-//										// Default: service defaulted within ADS.
-//				Streaming: <Boolean>	// Boolean defining streaming (subscription) or Non-streaming (snapshot).  
-//										// Default: true (streaming).
-//      		Domain: <String>		// Domain model for request.  
-//										// Default: MarketPrice.
-//				View: <Array>			// Fields to retrieve.  Eg: ["BID", "ASK"]
-//										// Default: All fields.
-//			}
+//      ric(s)    Reuters Instrument Codes defining the market data item. Required.  
+//                Eg: 'TRI.N'              (Single)
+//                Eg: ['TRI.N', 'AAPL.O']  (Batch)
+//      options   Collection of properties defining the different options for the request.  Optional.
+//          Options 
+//          {
+//              Service: <String>       // Name of service providing data. 
+//                                      // Default: service defaulted within ADS.
+//              Streaming: <Boolean>    // Boolean defining streaming (subscription) or Non-streaming (snapshot).  
+//                                      // Default: true (streaming).
+//              Domain: <String>        // Domain model for request.  
+//                                      // Default: MarketPrice.
+//              View: <Array>           // Fields to retrieve.  Eg: ["BID", "ASK"]
+//                                      // Default: All fields.
+//          }
 //
 TRWebSocketController.prototype.requestData = function(rics, options={})
 {
@@ -212,30 +212,30 @@ TRWebSocketController.prototype.requestData = function(rics, options={})
         return;
     
     // Retrieve the next available ID
-	let domain = (typeof options.Domain == "string" ? options.Domain : "MarketPrice");
-	let cb = (typeof options.cb == "function" ? options.cb : this._marketDataCb);
+    let domain = (typeof options.Domain == "string" ? options.Domain : "MarketPrice");
+    let cb = (typeof options.cb == "function" ? options.cb : this._marketDataCb);
     let id = this._getNextID(rics, domain, cb);
     
     // send marketPrice request message
     let marketPrice = {
         ID: id,
-		Domain: domain,
+        Domain: domain,
         Key: {
             Name: rics
         }
     };
 
-	// ******************
-	// Parse options
-	// ******************
-	if ( typeof options.Service == "string" )
-		marketPrice.Key.Service = options.Service;
-	
-	if ( typeof options.Streaming == "boolean" )
-		marketPrice.Streaming = options.Streaming;
-	
-	if ( Array.isArray(options.View) )
-		marketPrice.View = options.View;
+    // ******************
+    // Parse options
+    // ******************
+    if ( typeof options.Service == "string" )
+        marketPrice.Key.Service = options.Service;
+    
+    if ( typeof options.Streaming == "boolean" )
+        marketPrice.Streaming = options.Streaming;
+    
+    if ( Array.isArray(options.View) )
+        marketPrice.View = options.View;
 
     // Submit to server
     this._send(JSON.stringify(marketPrice)); 
@@ -246,21 +246,21 @@ TRWebSocketController.prototype.requestData = function(rics, options={})
 // Request the specified news content set from our WebSocket server.
 //
 // Parameters:
-//		ric(s)		 Name of the News content set.  Required.
-//					 Valid news RICs are:
-//						MRN_STORY: 	  Real-time News (headlines and stories)
-//						MRN_TRNA: 	  News Analytics: Company and C&E assets
-//						MRN_TRNA_DOC: News Analytics: Macroeconomic News and Events
-//						MRN_TRSI: 	  News Sentiment Indices
+//      ric(s)       Name of the News content set.  Required.
+//                   Valid news RICs are:
+//                      MRN_STORY:    Real-time News (headlines and stories)
+//                      MRN_TRNA:     News Analytics: Company and C&E assets
+//                      MRN_TRNA_DOC: News Analytics: Macroeconomic News and Events
+//                      MRN_TRSI:     News Sentiment Indices
 //      serviceName  Name of service where news stream is collected.  Optional.  Default: service defaulted within ADS.
 // 
 TRWebSocketController.prototype.requestNews = function(ric, serviceName=null)
 {
     this.requestData(ric, {
-			Service: serviceName, 
-			Domain: MRN_DOMAIN, 
-			cb: this._processNewsEnvelope 
-		});
+            Service: serviceName, 
+            Domain: MRN_DOMAIN, 
+            cb: this._processNewsEnvelope 
+        });
 };
 
 // TRWebSocketController.closeRequest(rics, domain)
@@ -269,22 +269,22 @@ TRWebSocketController.prototype.requestNews = function(ric, serviceName=null)
 //
 // Parameters:
 //      ric(s)       Reuters Instrument Codes defining the market data item. Required.
-//					 Eg: 'TRI.N'   (Single item)
-//					 Eg: ['TRI.N', 'AAPL.O']
+//                   Eg: 'TRI.N'   (Single item)
+//                   Eg: ['TRI.N', 'AAPL.O']
 //      domain       Domain model for request.  Optional.  Default: MarketPrice.
 //   
 TRWebSocketController.prototype.closeRequest = function(ric, domain="MarketPrice")
 {
-	// Build id array
-	let ids = [];
-	
-	if ( Array.isArray(ric) ) {
-		for (var i=0; i < ric.length; i++)			
-			ids.push(this._removeItem(ric[i] + ":" + domain));
-	}
-	else
-		ids.push(this._removeItem(ric + ":" + domain));
-	
+    // Build id array
+    let ids = [];
+    
+    if ( Array.isArray(ric) ) {
+        for (var i=0; i < ric.length; i++)          
+            ids.push(this._removeItem(ric[i] + ":" + domain));
+    }
+    else
+        ids.push(this._removeItem(ric + ":" + domain));
+    
     // Close the open streams...
     let close = {
         ID: (ids.length == 1 ? ids[0] : ids),
@@ -293,8 +293,8 @@ TRWebSocketController.prototype.closeRequest = function(ric, domain="MarketPrice
 
     // Submit to server
     this._send(JSON.stringify(close));
-	
-	return(this);
+    
+    return(this);
 };
 
 // TRWebSocketController.closeAllRequests
@@ -304,10 +304,10 @@ TRWebSocketController.prototype.closeRequest = function(ric, domain="MarketPrice
 TRWebSocketController.prototype.closeAllRequests = function() 
 {
     // Close all open Streams
-	let ids = this._getOpenStreams();
-	
-	this._removeID(ids);
-	
+    let ids = this._getOpenStreams();
+    
+    this._removeID(ids);
+    
     // Close the open streams...
     let close = {
         ID: (ids.length == 1 ? ids[0] : ids),
@@ -316,8 +316,8 @@ TRWebSocketController.prototype.closeAllRequests = function()
 
     // Submit to server
     this._send(JSON.stringify(close));
-	
-	return(this);
+    
+    return(this);
 };
 
 //
@@ -326,8 +326,8 @@ TRWebSocketController.prototype.closeAllRequests = function()
 //
 // Event function: f(eventCode, msg)
 //    Parameters:
-//		eventCode: 	value representing the type of status event (See below)
-//		msg:		Associated msg, if any, for the specified event (See below)
+//      eventCode:  value representing the type of status event (See below)
+//      msg:        Associated msg, if any, for the specified event (See below)
 //
 //      where code/msg is:
 //          0 - processingError
@@ -350,11 +350,11 @@ TRWebSocketController.prototype.onStatus = function(f) {
 //
 // Event function: f(msg)
 //    Parameters:
-//		msg: Elektron WebSocket market data message.  Refer to the Elektron WebSocket API documentation for details.
+//      msg: Elektron WebSocket market data message.  Refer to the Elektron WebSocket API documentation for details.
 //
 // Parameters:
 //      msg - Elektron WebSocket market data message.  Refer to the Elektron WebSocket API documentation for details.
-//		ric - Name of the News content set - See requestNews() method for valid News RICs.
+//      ric - Name of the News content set - See requestNews() method for valid News RICs.
 //
 TRWebSocketController.prototype.onMarketData = function(f) {
     if ( this.isCallback(f) ) this._marketDataCb = f;
@@ -366,8 +366,8 @@ TRWebSocketController.prototype.onMarketData = function(f) {
 //
 // Event function: f(ric, msg)
 //    Parameters:
-//		ric: RIC identifying the News content set - See requestNews() method for valid News RICs.
-//		msg: Contents of the News envelope for the associated content set (RIC).
+//      ric: RIC identifying the News content set - See requestNews() method for valid News RICs.
+//      msg: Contents of the News envelope for the associated content set (RIC).
 //
 TRWebSocketController.prototype.onNews = function(f) {
     if ( this.isCallback(f) ) this._newsStoryCb = f;
@@ -456,8 +456,8 @@ TRWebSocketController.prototype._onMessage = function (msg)
                 } else {
                     // Otherwise, we must have received some kind of market data message.       
                     // First, retrieve the processing callback.  
-					// Note: the processing callback is defined when a user requests for data 
-					//		 via requestData() or requestNews()
+                    // Note: the processing callback is defined when a user requests for data 
+                    //       via requestData() or requestNews()
                     this._msgCb = this._getCallback(data.ID);
                     
                     // Next, update our ID table based on the refresh
@@ -486,70 +486,70 @@ TRWebSocketController.prototype._onMessage = function (msg)
 //********************************************************************************************************* 
 TRWebSocketController.prototype._processNewsEnvelope = function(msg)
 {
-	try {
-		// We ignore the MRN Refresh envelope and ensure we're dealing with a 'NewsTextAnalytics' domain.    
-		if ( msg.Type === "Update" && msg.Domain === MRN_DOMAIN ) {
-			//********************************************************************************
-			// Before we start processing our fragment, we must ensure we have all of them.
-			// The GUID field is used to identify our envelope containing each fragment. We
-			// know we have all fragments when the total size of the fragment == TOT_SIZE.
-			//********************************************************************************
-	  
-			// Decode base64 (convert ascii to binary)  
-			let fragment = atob(msg.Fields.FRAGMENT);
-			
-			// Define the news item key - RIC:MRN_SRC:GUID.
-			// Used to reference our unique items for envelop management.
-			let key = msg.Key.Name + ":" + msg.Fields.MRN_SRC + ":" + msg.Fields.GUID;
+    try {
+        // We ignore the MRN Refresh envelope and ensure we're dealing with a 'NewsTextAnalytics' domain.    
+        if ( msg.Type === "Update" && msg.Domain === MRN_DOMAIN ) {
+            //********************************************************************************
+            // Before we start processing our fragment, we must ensure we have all of them.
+            // The GUID field is used to identify our envelope containing each fragment. We
+            // know we have all fragments when the total size of the fragment == TOT_SIZE.
+            //********************************************************************************
+      
+            // Decode base64 (convert ascii to binary)  
+            let fragment = atob(msg.Fields.FRAGMENT);
+            
+            // Define the news item key - RIC:MRN_SRC:GUID.
+            // Used to reference our unique items for envelop management.
+            let key = msg.Key.Name + ":" + msg.Fields.MRN_SRC + ":" + msg.Fields.GUID;
 
-			if ( msg.Fields.FRAG_NUM > 1 ) {
-				// We are now processing more than one part of an envelope - retrieve the current details
-				let envelope = this._getNewsEnvelope(key);
-				if ( envelope ) {
-					envelope.fragments = envelope.fragments + fragment;
-					
-					// Check to make sure we have everything.
-					if ( envelope.fragments.length < envelope.totalSize)
-						return;  // No - wait for some more
+            if ( msg.Fields.FRAG_NUM > 1 ) {
+                // We are now processing more than one part of an envelope - retrieve the current details
+                let envelope = this._getNewsEnvelope(key);
+                if ( envelope ) {
+                    envelope.fragments = envelope.fragments + fragment;
+                    
+                    // Check to make sure we have everything.
+                    if ( envelope.fragments.length < envelope.totalSize)
+                        return;  // No - wait for some more
 
-					// Yes - process 
-					fragment = envelope.fragments;
-	  
-					// Remove our envelope 
-					this._deleteNewsEnvelope(key);
-				}
-			} else if ( fragment.length < msg.Fields.TOT_SIZE) {
-				// We don't have all fragments yet - save what we have
-				this._setNewsEnvelope(key, {fragments: fragment, totalSize: msg.Fields.TOT_SIZE});
-				return;
-			}
+                    // Yes - process 
+                    fragment = envelope.fragments;
+      
+                    // Remove our envelope 
+                    this._deleteNewsEnvelope(key);
+                }
+            } else if ( fragment.length < msg.Fields.TOT_SIZE) {
+                // We don't have all fragments yet - save what we have
+                this._setNewsEnvelope(key, {fragments: fragment, totalSize: msg.Fields.TOT_SIZE});
+                return;
+            }
 
-			// *********************************************************
-			// All fragments have been received for this story - process
-			// *********************************************************
-			
-			// Convert binary string to character-number array
-			let charArr = fragment.split('').map(function(x){return x.charCodeAt(0);});
-			
-			// Turn number array into byte-array
-			let binArr = new Uint8Array(charArr);
+            // *********************************************************
+            // All fragments have been received for this story - process
+            // *********************************************************
+            
+            // Convert binary string to character-number array
+            let charArr = fragment.split('').map(function(x){return x.charCodeAt(0);});
+            
+            // Turn number array into byte-array
+            let binArr = new Uint8Array(charArr);
 
-			// Decompress fragments of data and convert to Ascii
-			let strData = zlib.pako.inflate(binArr, {to: 'string'});
+            // Decompress fragments of data and convert to Ascii
+            let strData = zlib.pako.inflate(binArr, {to: 'string'});
 
-			// Prepare as JSON object
-			let contents = JSON.parse(strData);
-			
-			// Present our final story to the application
-			if ( this.isCallback(this._newsStoryCb) ) this._newsStoryCb(msg.Key.Name, contents);
-		}
-	}
-	catch (e) {
-		// Processing error.  Report to our application interface
-		console.log(e);
-		console.log(msg);
-		if ( this.isCallback(this._statusCb) ) this._statusCb(this.status.processingError, e.message);
-	} 	
+            // Prepare as JSON object
+            let contents = JSON.parse(strData);
+            
+            // Present our final story to the application
+            if ( this.isCallback(this._newsStoryCb) ) this._newsStoryCb(msg.Key.Name, contents);
+        }
+    }
+    catch (e) {
+        // Processing error.  Report to our application interface
+        console.log(e);
+        console.log(msg);
+        if ( this.isCallback(this._statusCb) ) this._statusCb(this.status.processingError, e.message);
+    }   
 }
 
 //********************************************************************************************************* 
@@ -575,10 +575,10 @@ TRWebSocketController.prototype._login = function ()
     // send login request message
     let login = {
         ID: 0,
-        Domain:	"Login",
+        Domain: "Login",
         Key: {
             Name: this._loginParams.user,
-            Elements:	{
+            Elements:   {
                 ApplicationId: this._loginParams.appId,
                 Position: this._loginParams.position
             }

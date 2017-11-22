@@ -18,28 +18,28 @@
     
     // Connect into the server...
     elektronController.connect("ewa:15000", "user");
-	
+    
     elektronController.onStatus(function(eventCode, msg) {
         switch (eventCode) {                    
             case this.status.connected:
                 // TRQuoteController first reports success then will automatically attempt to log in to the TR WebSocket server.
                 console.log("Successfully connected into the Elektron WebSocket server.  Logging in.");
                 break;
-				
+                
             case this.status.disconnected:
                 console.log("Failed to connect/disconnected.");
                 break;
-				
-			case this.status.loginResponse:
-				if (this.loggedIn())
-					this.requestNews("MRN_STORY");
-				break;
-				
+                
+            case this.status.loginResponse:
+                if (this.loggedIn())
+                    this.requestNews("MRN_STORY");
+                break;
+                
             default:
                 console.log(msg);
                 break;
         }
-    });	
+    }); 
       
     elektronController.onNews(function(ric, msg) {
         console.log(msg);
