@@ -31,7 +31,7 @@
 				
 			case this.status.loginResponse:
 				if (this.loggedIn())
-					this.requestData("TRI.N", {Service: "ELEKTRON_EDGE", View: ["BID", "ASK", "TRDPRC_1"]});
+					this.requestData("TRI.N", {View: ["BID", "ASK", "TRDPRC_1"]});
 				break;
 				
 			default:

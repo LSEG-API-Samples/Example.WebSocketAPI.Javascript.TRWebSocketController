@@ -9,9 +9,9 @@
 //
 //      TRWebSocketController()
 //      TRWebSocketController.connect(server, user, appId="256", position="127.0.0.1");
-//      TRWebSocketController.requestData(ric, options={});
-//      TRWebSocketController.requestNews(ric, serviceName=null);
-//      TRWebSocketController.closeRequest(ric, domain="MarketPrice")
+//      TRWebSocketController.requestData(rics, options={});
+//      TRWebSocketController.requestNews(rics, serviceName=null);
+//      TRWebSocketController.closeRequest(rics, domain="MarketPrice")
 //      TRWebSocketController.closeAllRequests()
 //      TRWebSocketController.loggedIn()
 //      TRWebSocketController.onStatus(eventFn)
@@ -34,6 +34,8 @@ const MRN_DOMAIN = "NewsTextAnalytics";
 // Quote controller instance managing connection, login and message interaction to a TR Elektron WebSocket service.
 //
 function TRWebSocketController() {  
+    "use strict";
+    
     this._loggedIn = false;
     this._statusCb = null;
     this._marketDataCb = null;
@@ -63,7 +65,7 @@ function TRWebSocketController() {
 		// the base request.  That is, we make a request for a batch of 2 items with ID:13.  The 2 items will
 		// be given the IDs 14, 15 respectively.
 		if ( Array.isArray(ric) ) {
-			for (let i=0; i < ric.length; i++) {
+			for (var i=0; i < ric.length; i++) {
 				// Check an upper limit.  If reached roll over and start again.
 				if ( _lastID == Number.MAX_SAFE_INTEGER ) _lastID = 1;
 				_lastID++;
@@ -96,7 +98,7 @@ function TRWebSocketController() {
     // Retrieve the array of IDs for all the open streams.
     this._getOpenStreams = function() {
         let result = [];
-        for (let i in _openStreamTable)
+        for (var i in _openStreamTable)
             result.push(_openStreamTable[i].id);
         
         return(result);
@@ -155,7 +157,8 @@ TRWebSocketController.prototype.status = {
     connected: 1,
     disconnected: 2,
     loginResponse: 3,
-    msgStatus: 4
+    msgStatus: 4,
+    msgError: 5
 };
 
 //
@@ -183,7 +186,7 @@ TRWebSocketController.prototype.connect = function(server, user, appId="256", po
 }
 
 //
-// TRWebSocketController.requestData(ric, options = {})
+// TRWebSocketController.requestData(rics, options = {})
 // Request market data from our WebSocket server.
 //
 // Parameters:
@@ -215,7 +218,7 @@ TRWebSocketController.prototype.requestData = function(rics, options={})
     
     // send marketPrice request message
     let marketPrice = {
-        Id: id,
+        ID: id,
 		Domain: domain,
         Key: {
             Name: rics
@@ -239,11 +242,11 @@ TRWebSocketController.prototype.requestData = function(rics, options={})
 };
 
 //
-// TRWebSocketController.requestNews(ric, serviceName=null)
+// TRWebSocketController.requestNews(rics, serviceName=null)
 // Request the specified news content set from our WebSocket server.
 //
 // Parameters:
-//		ric			 Name of the News content set.  Required.
+//		ric(s)		 Name of the News content set.  Required.
 //					 Valid news RICs are:
 //						MRN_STORY: 	  Real-time News (headlines and stories)
 //						MRN_TRNA: 	  News Analytics: Company and C&E assets
@@ -260,7 +263,7 @@ TRWebSocketController.prototype.requestNews = function(ric, serviceName=null)
 		});
 };
 
-// TRWebSocketController.closeRequest(ric, domain)
+// TRWebSocketController.closeRequest(rics, domain)
 //
 // Close the open stream based on the specified ric and domain.
 //
@@ -276,7 +279,7 @@ TRWebSocketController.prototype.closeRequest = function(ric, domain="MarketPrice
 	let ids = [];
 	
 	if ( Array.isArray(ric) ) {
-		for (let i=0; i < ric.length; i++)			
+		for (var i=0; i < ric.length; i++)			
 			ids.push(this._removeItem(ric[i] + ":" + domain));
 	}
 	else
@@ -284,7 +287,7 @@ TRWebSocketController.prototype.closeRequest = function(ric, domain="MarketPrice
 	
     // Close the open streams...
     let close = {
-        Id: (ids.length == 1 ? ids[0] : ids),
+        ID: (ids.length == 1 ? ids[0] : ids),
         Type: "Close"
     };
 
@@ -307,7 +310,7 @@ TRWebSocketController.prototype.closeAllRequests = function()
 	
     // Close the open streams...
     let close = {
-        Id: (ids.length == 1 ? ids[0] : ids),
+        ID: (ids.length == 1 ? ids[0] : ids),
         Type: "Close"
     };
 
@@ -429,9 +432,8 @@ TRWebSocketController.prototype._onMessage = function (msg)
             let result = JSON.parse(msg.data);
 
             // Our messages are packed within arrays - iterate
-            let size = result.length;
             let data = {}
-            for (let i=0; i < size; i++) {
+            for (var i=0, size=result.length; i < size; i++) {
                 data = result[i];
                 
                 // Did we encounter a PING?
@@ -444,20 +446,22 @@ TRWebSocketController.prototype._onMessage = function (msg)
                     if ( this.isCallback(this._statusCb) ) this._statusCb(this.status.loginResponse, data);
                 } else if ( data.Type === "Status" ) {
                     // Issue on our message stream.  Make our ID available is stream is closed.
-                    if ( data.State.Stream == "Closed") this._removeID(data.Id);
+                    if ( data.State.Stream == "Closed") this._removeID(data.ID);
                     
                     // Report potential issues with our requested market data item
                     if ( this.isCallback(this._statusCb) ) this._statusCb(this.status.msgStatus, data);                        
-                }
-               else {
+                } else if ( data.Type === "Error" ) {
+                    // Report the invalid usage error
+                    if ( this.isCallback(this._statusCb) ) this._statusCb(this.status.msgError, data);
+                } else {
                     // Otherwise, we must have received some kind of market data message.       
                     // First, retrieve the processing callback.  
 					// Note: the processing callback is defined when a user requests for data 
 					//		 via requestData() or requestNews()
-                    this._msgCb = this._getCallback(data.Id);
+                    this._msgCb = this._getCallback(data.ID);
                     
                     // Next, update our ID table based on the refresh
-                    if ( data.Type === "Refresh" && data.State.Stream === "NonStreaming" ) this._removeID(data.Id);
+                    if ( data.Type === "Refresh" && data.State.Stream === "NonStreaming" ) this._removeID(data.ID);
                     
                     // Process the message
                     if ( this.isCallback(this._msgCb) ) this._msgCb(data);
@@ -555,7 +559,7 @@ TRWebSocketController.prototype._processNewsEnvelope = function(msg)
 // Eg JSON request format:
 // {
 //     "Domain": "Login",
-//     "Id": 1,
+//     "ID": 1,
 //     "Key": {
 //        "Name": "user",
 //        "Elements": {
@@ -570,7 +574,7 @@ TRWebSocketController.prototype._login = function ()
 {
     // send login request message
     let login = {
-        Id: 0,
+        ID: 0,
         Domain:	"Login",
         Key: {
             Name: this._loginParams.user,

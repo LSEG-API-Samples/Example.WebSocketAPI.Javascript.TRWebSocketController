@@ -1,6 +1,5 @@
 
 # Elektron WebSocket Controller
-Created by Platform Services GitHub tool on Mon Oct 2 2017
 
 ## Table of Content
 
@@ -34,7 +33,7 @@ Software components used:
 
     **Note**: The 'zlib.js' file was prepared by [browserfying](http://browserify.org/) the pako library.  This is a process to bring the capabilities of the node.js library to the browser.  For convenience and interest, I've included the node.js-based file called 'pako.js' which I used to create the 'zlib.js' package.  Refer to 'pako.js' file for general instructions as to how I did this.
 
-* Access to the Thomson Reuters Advanced Distribution Server (ADS) version 3 with an enabled WebSocket service.
+* Access to the Thomson Reuters Advanced Distribution Server (ADS) version 3.2 or greater with an enabled WebSocket service.
 
 ## <a id="usage"></a>Usage
 
@@ -47,10 +46,10 @@ Retrieving realtime quotes:
 let quoteController = new TRWebSocketController();
 
 // Connect into the WebSocket server
-quoteController.connect("wsServer:14002", "user");
+quoteController.connect("ewa:15000", "user");
 
-// Request for streaming quotes from the service 'ELEKTRON_SERVICE'.
-quoteController.requestData("TRI.N", {Service: "ELEKTRON_SERVICE"});
+// Request for streaming quotes for the company Thomson Reuters
+quoteController.requestData("TRI.N");
 
 // Capture market data quotes
 quoteController.onMarketData(function(msg) {
@@ -66,10 +65,10 @@ Retrieving realtime news headlines and stories:
 let newsController = new TRWebSocketController();
 
 // Connect into the WebSocket server
-newsController.connect("wsServer:14002", "user");
+newsController.connect("ewa:15000", "user");
 
-// Request for news content from the service 'ELEKTRON_SERVICE'.  Defaults to streaming headlines and stories (MRN_STORY domain).  
-newsController.requestNews("MRN_STORY", "ELEKTRON_SERVICE");
+// Request for news content from the streaming headlines and stories service (MRN_STORY).  
+newsController.requestNews("MRN_STORY");
 
 // Capture streaming news content
 newsController.onNews(function(ric, story) {
@@ -101,10 +100,6 @@ controller.onStatus(function(eventCode, msg) {
         case this.status.msgStatus:
             console.log("Item status response: " + msg);               
             break;
-                    
-        case this.status.processingError:
-            console.log("Controller error: " + msg);
-            break;
     }
 });
 ```
@@ -123,19 +118,19 @@ controller.onStatus(function(eventCode, msg) {
         IP/hostname and port of the Elektron Advanced Data Server (ADS) managing all communication. **Required**.
         Parameter syntax:
         ``` 
-        <IP/hostname>:<port>.  Eg: wsServer:14002
+        <IP/hostname>:<port>.  Eg: ewa:15000
         ```
     * **user / appId / position**
 
         These 3 parameters are used as authentication to the ADS server.  Refer to the [WebSocket API documentation](https://developers.thomsonreuters.com/elektron/websocket-api-early-access/downloads) for specific details of each parameter.
 
-* **TRWebSocketController.requestData(ric, options={})**
+* **TRWebSocketController.requestData(ric, options=\{\})**
 
     Request for data from the WebSocket server based on the specified item.
 
     * **ric**
     
-        String or array of names identifying the Reuters Instrument Code(s) - ric(s). **Required**.  
+        String or array of names identifying the Reuters Instrument Code(s), i.e. RIC(s). **Required**.  
         
         Eg: 'TRI.N'                 (Single)  
         Eg: ['TRI.N', 'AAPL.O']     (Batch)
@@ -163,7 +158,7 @@ controller.onStatus(function(eventCode, msg) {
 
 	* **ric**
     
-		String or array of names identifying the Reuters Instrument Code(s) - ric(s) used to represent the news content set of interest. **Required**.
+		String or array of names identifying the Reuters Instrument Code(s), i.e. RIC(s) used to represent the news content set of interest. **Required**.
 
 		Valid news RICs are:
 
@@ -226,8 +221,13 @@ controller.onStatus(function(eventCode, msg) {
 
             * **status.msgStatus**
         
-                Item response based on request for data.  
+                Status response based on request for data.  
                 The 'msg' object contains the Elektron WebSocket status message.  See the WebSocket API documentation for details. 
+
+            * **status.msgError**
+        
+                Error response related to invalid usage of the request messages.  
+                The 'msg' object contains a Text field indicating the error.
 
             * **status.processingError**
         
