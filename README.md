@@ -21,7 +21,7 @@ For any question related to this component, please use the Developer Community [
 ***Note:** To be able to ask questions and to benefit from the full content available on the [TR Developer Community portal](https://developers.thomsonreuters.com) we recommend you to [register here]( https://developers.thomsonreuters.com/iam/register) or [login here]( https://developers.thomsonreuters.com/iam/login?destination_path=Lw%3D%3D).*
 
 ## <a id="disclaimer"></a>Disclaimer
-The source code presented in this project has been written by Thomson Reuters only for the purpose of illustrating the concepts of interfacing with Thomson Reuters Elektron WebSocket service.  It has not been tested for a usage in production environments.
+TheÂ source code presented in this project has been written by Thomson Reuters only for the purpose of illustrating the concepts of interfacing with Thomson Reuters Elektron WebSocket service.  It has not been tested for a usage in production environments.
 
 ## <a id="package"></a>Package
 
@@ -34,6 +34,10 @@ Software components used:
     **Note**: The 'zlib.js' file was prepared by [browserfying](http://browserify.org/) the pako library.  This is a process to bring the capabilities of the node.js library to the browser.  For convenience and interest, I've included the node.js-based file called 'pako.js' which I used to create the 'zlib.js' package.  Refer to 'pako.js' file for general instructions as to how I did this.
 
 * Access to the Thomson Reuters Advanced Distribution Server (ADS) version 3.2 or greater with an enabled WebSocket service.
+
+
+Browser support: 
+* [Any browser](https://kangax.github.io/compat-table/es6/) that supports the [ES2015 specification](https://en.wikipedia.org/wiki/ECMAScript#6th_Edition_-_ECMAScript_2015).
 
 ## <a id="usage"></a>Usage
 
